@@ -1,6 +1,6 @@
 # rye-skill-based-router-for-101-DAOs
-Ryze: The AI Governance Engine
-Ryze is the central intelligence of this system. It's a collection of services, likely running on a cloud platform or offline in a Mesh Fog AI community with little connectivity.
+Rye: The AI Governance Engine
+Rye is the central intelligence of this system. It's a collection of services, likely running on a cloud platform or offline in a Mesh Fog AI community with little connectivity.
 AI-driven systems, DAOs, and collaborative coding environments, DAOs can design a sophisticated and dynamic skill-based routing infrastructure governed by an AI agent named Rye.
 
 This system will integrate with Slack for real-time communication and dynamically manage support tasks based on team member availability and expertise, particularly for errors that arise before a recurring deadline like a weekly meeting.
