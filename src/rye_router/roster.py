@@ -6,11 +6,14 @@ from .models import TeamMember
 from .db_models import DBTeamMember
 from .config import settings
 
+
 class RosterManager:
     def __init__(self, db_session: Session):
         self.db = db_session
         self.slack_token = settings.slack_bot_token
-        self.slack_client = WebClient(token=self.slack_token) if self.slack_token else None
+        self.slack_client = (
+            WebClient(token=self.slack_token) if self.slack_token else None
+        )
 
     def update_availability_from_slack(self):
         """
@@ -19,7 +22,7 @@ class RosterManager:
         if not self.slack_client:
             # Skip checking if Slack token is not configured
             return
-            
+
         members = self.db.query(DBTeamMember).all()
         for member in members:
             if not member.slack_id:
@@ -28,15 +31,17 @@ class RosterManager:
                 # Check user presence (active or away)
                 response = self.slack_client.users_getPresence(user=member.slack_id)
                 presence = response.get("presence", "away")
-                
+
                 # Active means they are online and available
-                is_available = (presence == "active")
-                
+                is_available = presence == "active"
+
                 if member.is_available != is_available:
                     member.is_available = is_available
             except SlackApiError as e:
-                print(f"Error fetching presence for {member.slack_id}: {e.response['error']}")
-                
+                print(
+                    f"Error fetching presence for {member.slack_id}: {e.response['error']}"
+                )
+
         self.db.commit()
 
     def get_available_members(self, exclude_user_id: str) -> List[TeamMember]:
@@ -44,11 +49,15 @@ class RosterManager:
         Returns a list of available team members, excluding the original job owner.
         """
         self.update_availability_from_slack()
-        db_members = self.db.query(DBTeamMember).filter(
-            DBTeamMember.is_available == True,
-            DBTeamMember.user_id != exclude_user_id
-        ).all()
-        
+        db_members = (
+            self.db.query(DBTeamMember)
+            .filter(
+                DBTeamMember.is_available == True,  # noqa: E712
+                DBTeamMember.user_id != exclude_user_id,
+            )
+            .all()
+        )
+
         return [
             TeamMember(
                 user_id=m.user_id,
@@ -56,10 +65,11 @@ class RosterManager:
                 name=m.name,
                 skills=m.skills,
                 is_available=m.is_available,
-                current_workload=m.current_workload
-            ) for m in db_members
+                current_workload=m.current_workload,
+            )
+            for m in db_members
         ]
-    
+
     def get_member_by_user_id(self, user_id: str) -> Optional[TeamMember]:
         m = self.db.query(DBTeamMember).filter(DBTeamMember.user_id == user_id).first()
         if m:
@@ -69,6 +79,6 @@ class RosterManager:
                 name=m.name,
                 skills=m.skills,
                 is_available=m.is_available,
-                current_workload=m.current_workload
+                current_workload=m.current_workload,
             )
         return None

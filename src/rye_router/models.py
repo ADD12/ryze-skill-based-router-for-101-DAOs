@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+
 class JobError(BaseModel):
     job_id: str
     owner_id: str
@@ -10,6 +11,7 @@ class JobError(BaseModel):
     stack_trace: Optional[str] = None
     timestamp: datetime = datetime.now()
 
+
 class TeamMember(BaseModel):
     user_id: str
     slack_id: str
@@ -17,6 +19,7 @@ class TeamMember(BaseModel):
     skills: List[str]
     is_available: bool  # Derived from Slack status
     current_workload: int = 0
+
 
 class RoutingDecision(BaseModel):
     job_id: str

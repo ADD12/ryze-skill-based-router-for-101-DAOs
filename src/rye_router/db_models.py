@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Boolean, Integer, JSON
 from .database import Base
 
+
 class DBTeamMember(Base):
     __tablename__ = "team_members"
 

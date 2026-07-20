@@ -17,10 +17,10 @@
 - [x] Define precise RBAC for the API endpoints.
 
 ## Testing & CI/CD
-- [ ] Write unit tests for the routing algorithm (`pytest`).
-- [ ] Write integration tests mocking Slack API endpoints.
-- [ ] Implement CI workflow (GitHub Actions) for linting, testing, and formatting (Black/Ruff).
-- [ ] Create a `Dockerfile` and `docker-compose.yml` for easy deployment in a Mesh Fog AI community or standard Cloud.
+- [x] Write unit tests for the routing algorithm (`pytest`).
+- [x] Write integration tests mocking Slack API endpoints.
+- [x] Implement CI workflow (GitHub Actions) for linting, testing, and formatting (Black/Ruff).
+- [x] Create a `Dockerfile` and `docker-compose.yml` for easy deployment in a Mesh Fog AI community or standard Cloud.
 
 ## Documentation & Repository Settings
 - [ ] Rename the GitHub Repository from `ADD12/ryze-skill-based-router-for-101-DAOs` to `ADD12/rye-skill-based-router-for-101-DAOs`. *(Requires Admin Permissions)*

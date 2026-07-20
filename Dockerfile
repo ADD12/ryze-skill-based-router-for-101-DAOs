@@ -1,0 +1,22 @@
+# Use the official Python slim image
+FROM python:3.10-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Upgrade pip and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
+
+# Expose the API port
+EXPOSE 8000
+
+# Create a volume for the SQLite database data if using SQLite natively
+VOLUME ["/app/data"]
+
+# Run the FastAPI application using uvicorn
+CMD ["uvicorn", "src.rye_router.api:app", "--host", "0.0.0.0", "--port", "8000"]
