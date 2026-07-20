@@ -1,12 +1,12 @@
-import os
 import json
 from typing import List
 from openai import OpenAI
 from .models import JobError
+from .config import settings
 
 class AITriage:
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self.api_key = api_key or settings.openai_api_key
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
     def analyze_error(self, error: JobError) -> List[str]:

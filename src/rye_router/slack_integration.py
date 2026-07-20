@@ -1,11 +1,11 @@
-import os
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from .models import RoutingDecision, JobError
+from .config import settings
 
 class SlackActionManager:
     def __init__(self, token: str = None):
-        self.token = token or os.environ.get("SLACK_BOT_TOKEN")
+        self.token = token or settings.slack_bot_token
         # Initialize client if token is available
         self.client = WebClient(token=self.token) if self.token else None
 

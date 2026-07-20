@@ -1,15 +1,15 @@
-import os
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from .models import TeamMember
 from .db_models import DBTeamMember
+from .config import settings
 
 class RosterManager:
     def __init__(self, db_session: Session):
         self.db = db_session
-        self.slack_token = os.environ.get("SLACK_BOT_TOKEN")
+        self.slack_token = settings.slack_bot_token
         self.slack_client = WebClient(token=self.slack_token) if self.slack_token else None
 
     def update_availability_from_slack(self):

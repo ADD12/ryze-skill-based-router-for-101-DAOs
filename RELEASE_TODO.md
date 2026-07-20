@@ -12,9 +12,9 @@
 - [x] **Event Bus Integration:** Provide example webhooks or configure an ingestion pipeline for standard event buses (Kafka, RabbitMQ, AWS EventBridge).
 
 ## Security & Configuration
-- [ ] Setup `.env` parsing (e.g., `pydantic-settings`) for credentials (`SLACK_BOT_TOKEN`, `OPENAI_API_KEY`, Database URIs).
-- [ ] Add webhook payload signature verification (e.g., GitHub Actions webhook secrets) to secure the `/webhook/error` endpoint.
-- [ ] Define precise RBAC for the API endpoints.
+- [x] Setup `.env` parsing (e.g., `pydantic-settings`) for credentials (`SLACK_BOT_TOKEN`, `OPENAI_API_KEY`, Database URIs).
+- [x] Add webhook payload signature verification (e.g., GitHub Actions webhook secrets) to secure the `/webhook/error` endpoint.
+- [x] Define precise RBAC for the API endpoints.
 
 ## Testing & CI/CD
 - [ ] Write unit tests for the routing algorithm (`pytest`).

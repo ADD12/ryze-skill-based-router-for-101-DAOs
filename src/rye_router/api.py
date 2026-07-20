@@ -1,15 +1,17 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Form
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from typing import List
 import json
 
-from .models import JobError
+from .models import JobError, TeamMember
 from .triage import AITriage
 from .roster import RosterManager
 from .router import SkillRouter
 from .slack_integration import SlackActionManager
 from .database import get_db, engine
 from . import db_models
+from .security import verify_github_signature, verify_slack_signature, verify_admin
 
 # Create tables
 db_models.Base.metadata.create_all(bind=engine)
@@ -25,10 +27,11 @@ class WebhookResponse(BaseModel):
     assigned_to: str = None
     reasoning: str = None
 
-@app.post("/webhook/error", response_model=WebhookResponse)
+@app.post("/webhook/error", response_model=WebhookResponse, dependencies=[Depends(verify_github_signature)])
 async def handle_error_webhook(error: JobError, db: Session = Depends(get_db)):
     """
     Error Ingestion endpoint. Accepts detailed error payload from event bus or CI/CD system.
+    Secured by GitHub Webhook Signature.
     """
     roster = RosterManager(db_session=db)
     router = SkillRouter(triage=triage, roster=roster)
@@ -55,12 +58,18 @@ async def handle_error_webhook(error: JobError, db: Session = Depends(get_db)):
             message="No available team members found for routing.",
         )
 
-@app.post("/slack/interactivity")
-async def slack_interactivity(payload: str = Form(...), db: Session = Depends(get_db)):
+@app.post("/slack/interactivity", dependencies=[Depends(verify_slack_signature)])
+async def slack_interactivity(request: Request, db: Session = Depends(get_db)):
     """
     Handles interactive components from Slack (like button clicks).
+    Secured by Slack Signing Secret.
     """
     try:
+        form = await request.form()
+        payload = form.get("payload")
+        if not payload:
+            raise HTTPException(status_code=400, detail="Missing payload")
+            
         data = json.loads(payload)
         
         # We only care about block_actions (button clicks)
@@ -78,8 +87,6 @@ async def slack_interactivity(payload: str = Form(...), db: Session = Depends(ge
                     slack_id = user_info.get("id")
                     
                     print(f"User {slack_id} acknowledged job {job_id}")
-                    
-                    # You could update the Job status in DB here
                     
                     # Update message to reflect acknowledgment
                     if slack_manager.client and channel_id and message_ts:
@@ -104,6 +111,17 @@ async def slack_interactivity(payload: str = Form(...), db: Session = Depends(ge
         return {"status": "ok"}
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid payload")
+
+@app.get("/admin/roster", dependencies=[Depends(verify_admin)])
+def get_full_roster(db: Session = Depends(get_db)):
+    """
+    Admin-only endpoint to view the full team roster.
+    Secured by API Key (RBAC).
+    """
+    roster = RosterManager(db_session=db)
+    # Get everyone by passing an impossible exclude ID
+    members = roster.get_available_members(exclude_user_id="nobody")
+    return members
 
 @app.get("/health")
 def health_check():
