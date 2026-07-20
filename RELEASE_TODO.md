@@ -23,8 +23,8 @@
 - [x] Create a `Dockerfile` and `docker-compose.yml` for easy deployment in a Mesh Fog AI community or standard Cloud.
 
 ## Documentation & Repository Settings
-- [ ] Rename the GitHub Repository from `ADD12/ryze-skill-based-router-for-101-DAOs` to `ADD12/rye-skill-based-router-for-101-DAOs`. *(Requires Admin Permissions)*
-- [ ] Update GitHub Repository Description to: `"Rye is a skill-based routing AI agent for your next company or DAO"`. *(Requires Admin Permissions)*
+- [x] Rename the GitHub Repository from `ADD12/ryze-skill-based-router-for-101-DAOs` to `ADD12/rye-skill-based-router-for-101-DAOs`. *(Requires Admin Permissions)*
+- [x] Update GitHub Repository Description to: `"Rye is a skill-based routing AI agent for your next company or DAO"`. *(Requires Admin Permissions)*
 - [x] Add API documentation (available at `/docs` via FastAPI) to the README.
 - [x] Add Slack App installation instructions to the README.
 - [x] Write a "Getting Started" guide to show how to add team member skills and simulate a job error.
