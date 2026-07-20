@@ -1,19 +1,22 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request, Form
 from pydantic import BaseModel
-from typing import Dict, Any
+from sqlalchemy.orm import Session
+import json
 
 from .models import JobError
 from .triage import AITriage
 from .roster import RosterManager
 from .router import SkillRouter
 from .slack_integration import SlackActionManager
+from .database import get_db, engine
+from . import db_models
+
+# Create tables
+db_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Rye - Skill-based Routing AI Agent")
 
-# Initialize modules
 triage = AITriage()
-roster = RosterManager()
-router = SkillRouter(triage=triage, roster=roster)
 slack_manager = SlackActionManager()
 
 class WebhookResponse(BaseModel):
@@ -23,15 +26,17 @@ class WebhookResponse(BaseModel):
     reasoning: str = None
 
 @app.post("/webhook/error", response_model=WebhookResponse)
-async def handle_error_webhook(error: JobError):
+async def handle_error_webhook(error: JobError, db: Session = Depends(get_db)):
     """
     Error Ingestion endpoint. Accepts detailed error payload from event bus or CI/CD system.
     """
+    roster = RosterManager(db_session=db)
+    router = SkillRouter(triage=triage, roster=roster)
+    
     decision = router.route_error(error)
     
     if decision:
-        # In a real app, map assigned_user_id to slack_user_id
-        assigned_member = next((m for m in roster.team_members if m.user_id == decision.assigned_user_id), None)
+        assigned_member = roster.get_member_by_user_id(decision.assigned_user_id)
         slack_id = assigned_member.slack_id if assigned_member else "UNKNOWN"
         
         # Send Slack action
@@ -49,6 +54,56 @@ async def handle_error_webhook(error: JobError):
             status="warning",
             message="No available team members found for routing.",
         )
+
+@app.post("/slack/interactivity")
+async def slack_interactivity(payload: str = Form(...), db: Session = Depends(get_db)):
+    """
+    Handles interactive components from Slack (like button clicks).
+    """
+    try:
+        data = json.loads(payload)
+        
+        # We only care about block_actions (button clicks)
+        if data.get("type") == "block_actions":
+            actions = data.get("actions", [])
+            user_info = data.get("user", {})
+            channel_id = data.get("channel", {}).get("id")
+            message_ts = data.get("message", {}).get("ts")
+            
+            for action in actions:
+                value = action.get("value", "")
+                
+                if value.startswith("ack_"):
+                    job_id = value.replace("ack_", "")
+                    slack_id = user_info.get("id")
+                    
+                    print(f"User {slack_id} acknowledged job {job_id}")
+                    
+                    # You could update the Job status in DB here
+                    
+                    # Update message to reflect acknowledgment
+                    if slack_manager.client and channel_id and message_ts:
+                        try:
+                            slack_manager.client.chat_update(
+                                channel=channel_id,
+                                ts=message_ts,
+                                text=f"Job {job_id} acknowledged.",
+                                blocks=[
+                                    {
+                                        "type": "section",
+                                        "text": {
+                                            "type": "mrkdwn",
+                                            "text": f"✅ *Job {job_id} has been acknowledged by <@{slack_id}>.*"
+                                        }
+                                    }
+                                ]
+                            )
+                        except Exception as e:
+                            print(f"Failed to update Slack message: {e}")
+                            
+        return {"status": "ok"}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
 
 @app.get("/health")
 def health_check():

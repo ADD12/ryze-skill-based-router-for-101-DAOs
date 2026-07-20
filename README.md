@@ -16,3 +16,43 @@ This closed-loop system where:
 5. Intelligent Routing: Rye queries its roster to find the best-suited, available team member who is not the original owner of the failed job.
 
 6. Slack-based Action & Communication: Rye assigns the task via a direct, interactive message in a dedicated Slack channel, and manages the entire support lifecycle through Slack.![RYE](https://github.com/user-attachments/assets/2781c7c2-427e-4bca-98ee-65f8fb8eb41a)
+
+## Getting Started
+
+1. **Install dependencies:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. **Configure Environment:**
+Create a `.env` file in the root directory:
+```env
+SLACK_BOT_TOKEN=xoxb-your-slack-token
+OPENAI_API_KEY=sk-your-openai-key
+DATABASE_URL=sqlite:///./rye.db
+```
+
+3. **Seed Database:**
+```bash
+python seed_db.py
+```
+
+4. **Run the API:**
+```bash
+python main.py
+```
+
+5. **Test Webhooks / Event Bus:**
+In a separate terminal, simulate a CI/CD failure:
+```bash
+python event_bus_example.py
+```
+
+## API Endpoints
+- `POST /webhook/error`: Ingests an error from a system, routes it to the best available member via AI triage.
+- `POST /slack/interactivity`: Handles Slack block actions (e.g., clicking "Acknowledge" on a task).
+- `GET /health`: Basic health check.
+
+You can view the full Swagger/OpenAPI docs by visiting `http://localhost:8000/docs` while the server is running.
