@@ -1,0 +1,399 @@
+From f894423512421b5ca5a1b69cf83a85e66cc83f45 Mon Sep 17 00:00:00 2001
+From: II Agent <ii@agent.com>
+Date: Mon, 20 Jul 2026 14:40:21 +0000
+Subject: [PATCH] Scaffold basic Rye AI architecture and create release
+ checklist
+
+---
+ .gitignore                          |  5 +++
+ RELEASE_TODO.md                     | 30 ++++++++++++++++
+ main.py                             |  9 +++++
+ requirements.txt                    |  6 ++++
+ src/rye_router/__init__.py          |  4 +++
+ src/rye_router/api.py               | 55 +++++++++++++++++++++++++++++
+ src/rye_router/models.py            | 25 +++++++++++++
+ src/rye_router/roster.py            | 28 +++++++++++++++
+ src/rye_router/router.py            | 47 ++++++++++++++++++++++++
+ src/rye_router/slack_integration.py | 50 ++++++++++++++++++++++++++
+ src/rye_router/triage.py            | 31 ++++++++++++++++
+ 11 files changed, 290 insertions(+)
+ create mode 100644 RELEASE_TODO.md
+ create mode 100644 main.py
+ create mode 100644 requirements.txt
+ create mode 100644 src/rye_router/__init__.py
+ create mode 100644 src/rye_router/api.py
+ create mode 100644 src/rye_router/models.py
+ create mode 100644 src/rye_router/roster.py
+ create mode 100644 src/rye_router/router.py
+ create mode 100644 src/rye_router/slack_integration.py
+ create mode 100644 src/rye_router/triage.py
+
+diff --git a/.gitignore b/.gitignore
+index 8b13789..78498cf 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1 +1,6 @@
+ 
++__pycache__/
++*.pyc
++.env
++venv/
++.venv/
+diff --git a/RELEASE_TODO.md b/RELEASE_TODO.md
+new file mode 100644
+index 0000000..b5fdd0b
+--- /dev/null
++++ b/RELEASE_TODO.md
+@@ -0,0 +1,30 @@
++# Rye AI Governance Engine - Release Checklist (v1.0)
++
++## Code & Architecture Implementation
++- [x] Scaffold core module structure (`triage`, `roster`, `router`, `slack_integration`, `api`).
++- [x] Create core Pydantic data models for JobError, TeamMember, and RoutingDecision.
++- [x] Implement the FastAPI endpoint for error ingestion (`/webhook/error`).
++- [x] Build mock intelligent routing based on skills matching and current workload.
++- [ ] **AI Triage Integration:** Connect `src/rye_router/triage.py` to OpenAI API / Local LLM for dynamic context and skill extraction from unstructured stack traces.
++- [ ] **Database Setup:** Replace the mock roster array in `src/rye_router/roster.py` with an actual database (e.g., PostgreSQL, MongoDB) or an ORM (SQLAlchemy) to persist user profiles.
++- [ ] **Slack Real-time Sync:** Implement Slack presence checking in `roster.py` to automatically update `is_available` status via Slack WebSockets or Events API.
++- [ ] **Slack Interactivity:** Set up a Slack Event listener (using Bolt for Python or FastAPI) to handle the "Acknowledge" button clicks from the interactive messages.
++- [ ] **Event Bus Integration:** Provide example webhooks or configure an ingestion pipeline for standard event buses (Kafka, RabbitMQ, AWS EventBridge).
++
++## Security & Configuration
++- [ ] Setup `.env` parsing (e.g., `pydantic-settings`) for credentials (`SLACK_BOT_TOKEN`, `OPENAI_API_KEY`, Database URIs).
++- [ ] Add webhook payload signature verification (e.g., GitHub Actions webhook secrets) to secure the `/webhook/error` endpoint.
++- [ ] Define precise RBAC for the API endpoints.
++
++## Testing & CI/CD
++- [ ] Write unit tests for the routing algorithm (`pytest`).
++- [ ] Write integration tests mocking Slack API endpoints.
++- [ ] Implement CI workflow (GitHub Actions) for linting, testing, and formatting (Black/Ruff).
++- [ ] Create a `Dockerfile` and `docker-compose.yml` for easy deployment in a Mesh Fog AI community or standard Cloud.
++
++## Documentation & Repository Settings
++- [ ] Rename the GitHub Repository from `ADD12/ryze-skill-based-router-for-101-DAOs` to `ADD12/rye-skill-based-router-for-101-DAOs`. *(Requires Admin Permissions)*
++- [ ] Update GitHub Repository Description to: `"Rye is a skill-based routing AI agent for your next company or DAO"`. *(Requires Admin Permissions)*
++- [ ] Add API documentation (available at `/docs` via FastAPI) to the README.
++- [ ] Add Slack App installation instructions to the README.
++- [ ] Write a "Getting Started" guide to show how to add team member skills and simulate a job error.
+\ No newline at end of file
+diff --git a/main.py b/main.py
+new file mode 100644
+index 0000000..161d565
+--- /dev/null
++++ b/main.py
+@@ -0,0 +1,9 @@
++import uvicorn
++from src.rye_router.api import app
++
++def main():
++    print("Starting Rye AI Governance Engine...")
++    uvicorn.run(app, host="0.0.0.0", port=8000)
++
++if __name__ == "__main__":
++    main()
+\ No newline at end of file
+diff --git a/requirements.txt b/requirements.txt
+new file mode 100644
+index 0000000..e2db67f
+--- /dev/null
++++ b/requirements.txt
+@@ -0,0 +1,6 @@
++fastapi==0.103.2
++uvicorn==0.23.2
++pydantic==2.4.2
++slack_sdk==3.23.0
++openai==1.1.1
++python-dotenv==1.0.0
+\ No newline at end of file
+diff --git a/src/rye_router/__init__.py b/src/rye_router/__init__.py
+new file mode 100644
+index 0000000..bf326d2
+--- /dev/null
++++ b/src/rye_router/__init__.py
+@@ -0,0 +1,4 @@
++"""
++Rye: The AI Governance Engine
++Skill-based routing AI agent for your company or DAO.
++"""
+\ No newline at end of file
+diff --git a/src/rye_router/api.py b/src/rye_router/api.py
+new file mode 100644
+index 0000000..30e9660
+--- /dev/null
++++ b/src/rye_router/api.py
+@@ -0,0 +1,55 @@
++from fastapi import FastAPI, HTTPException
++from pydantic import BaseModel
++from typing import Dict, Any
++
++from .models import JobError
++from .triage import AITriage
++from .roster import RosterManager
++from .router import SkillRouter
++from .slack_integration import SlackActionManager
++
++app = FastAPI(title="Rye - Skill-based Routing AI Agent")
++
++# Initialize modules
++triage = AITriage()
++roster = RosterManager()
++router = SkillRouter(triage=triage, roster=roster)
++slack_manager = SlackActionManager()
++
++class WebhookResponse(BaseModel):
++    status: str
++    message: str
++    assigned_to: str = None
++    reasoning: str = None
++
++@app.post("/webhook/error", response_model=WebhookResponse)
++async def handle_error_webhook(error: JobError):
++    """
++    Error Ingestion endpoint. Accepts detailed error payload from event bus or CI/CD system.
++    """
++    decision = router.route_error(error)
++    
++    if decision:
++        # In a real app, map assigned_user_id to slack_user_id
++        assigned_member = next((m for m in roster.team_members if m.user_id == decision.assigned_user_id), None)
++        slack_id = assigned_member.slack_id if assigned_member else "UNKNOWN"
++        
++        # Send Slack action
++        slack_manager.send_assignment_message(decision, error, slack_user_id=slack_id)
++        
++        return WebhookResponse(
++            status="success",
++            message="Error routed successfully.",
++            assigned_to=decision.assigned_user_id,
++            reasoning=decision.reasoning
++        )
++    else:
++        # Fallback logic if no one is available
++        return WebhookResponse(
++            status="warning",
++            message="No available team members found for routing.",
++        )
++
++@app.get("/health")
++def health_check():
++    return {"status": "ok", "service": "rye"}
+\ No newline at end of file
+diff --git a/src/rye_router/models.py b/src/rye_router/models.py
+new file mode 100644
+index 0000000..8afef4f
+--- /dev/null
++++ b/src/rye_router/models.py
+@@ -0,0 +1,25 @@
++from pydantic import BaseModel
++from typing import List, Optional
++from datetime import datetime
++
++class JobError(BaseModel):
++    job_id: str
++    owner_id: str
++    system: str  # GitHub Actions, Jenkins, etc.
++    error_message: str
++    stack_trace: Optional[str] = None
++    timestamp: datetime = datetime.now()
++
++class TeamMember(BaseModel):
++    user_id: str
++    slack_id: str
++    name: str
++    skills: List[str]
++    is_available: bool  # Derived from Slack status
++    current_workload: int = 0
++
++class RoutingDecision(BaseModel):
++    job_id: str
++    assigned_user_id: str
++    required_skills: List[str]
++    reasoning: str
+\ No newline at end of file
+diff --git a/src/rye_router/roster.py b/src/rye_router/roster.py
+new file mode 100644
+index 0000000..6ddfd68
+--- /dev/null
++++ b/src/rye_router/roster.py
+@@ -0,0 +1,28 @@
++from typing import List, Optional
++from .models import TeamMember
++
++class RosterManager:
++    def __init__(self):
++        # Mock database of team members
++        self.team_members = [
++            TeamMember(user_id="u1", slack_id="U111", name="Alice", skills=["python", "database-admin"], is_available=True),
++            TeamMember(user_id="u2", slack_id="U222", name="Bob", skills=["cuda", "python"], is_available=False),
++            TeamMember(user_id="u3", slack_id="U333", name="Charlie", skills=["cesiumjs"], is_available=True),
++        ]
++
++    def update_availability_from_slack(self):
++        """
++        Poll Slack API to update real-time presence/status of team members.
++        """
++        # TODO: Implement Slack presence check
++        pass
++
++    def get_available_members(self, exclude_user_id: str) -> List[TeamMember]:
++        """
++        Returns a list of available team members, excluding the original job owner.
++        """
++        self.update_availability_from_slack()
++        return [
++            m for m in self.team_members 
++            if m.is_available and m.user_id != exclude_user_id
++        ]
+\ No newline at end of file
+diff --git a/src/rye_router/router.py b/src/rye_router/router.py
+new file mode 100644
+index 0000000..6841f29
+--- /dev/null
++++ b/src/rye_router/router.py
+@@ -0,0 +1,47 @@
++from typing import List, Optional
++from .models import JobError, TeamMember, RoutingDecision
++from .triage import AITriage
++from .roster import RosterManager
++
++class SkillRouter:
++    def __init__(self, triage: AITriage, roster: RosterManager):
++        self.triage = triage
++        self.roster = roster
++
++    def route_error(self, error: JobError) -> Optional[RoutingDecision]:
++        """
++        Main logic to find the best suited available team member.
++        """
++        # Step 1: AI Triage to determine required skills
++        required_skills = self.triage.analyze_error(error)
++
++        # Step 2: Get available members (exclude job owner)
++        candidates = self.roster.get_available_members(exclude_user_id=error.owner_id)
++
++        if not candidates:
++            return None # No one is available
++
++        # Step 3: Match skills
++        best_candidate = None
++        max_overlap = -1
++        
++        for candidate in candidates:
++            # Calculate skill overlap
++            overlap = len(set(required_skills).intersection(set(candidate.skills)))
++            if overlap > max_overlap:
++                max_overlap = overlap
++                best_candidate = candidate
++            elif overlap == max_overlap:
++                # Tie-breaker: lowest workload
++                if best_candidate is None or candidate.current_workload < best_candidate.current_workload:
++                    best_candidate = candidate
++                    
++        if best_candidate:
++            return RoutingDecision(
++                job_id=error.job_id,
++                assigned_user_id=best_candidate.user_id,
++                required_skills=required_skills,
++                reasoning=f"Matched on skills: {max_overlap} overlapping skills. Currently available."
++            )
++            
++        return None
+\ No newline at end of file
+diff --git a/src/rye_router/slack_integration.py b/src/rye_router/slack_integration.py
+new file mode 100644
+index 0000000..910d9ab
+--- /dev/null
++++ b/src/rye_router/slack_integration.py
+@@ -0,0 +1,50 @@
++import os
++from slack_sdk import WebClient
++from slack_sdk.errors import SlackApiError
++from .models import RoutingDecision, JobError
++
++class SlackActionManager:
++    def __init__(self, token: str = None):
++        self.token = token or os.environ.get("SLACK_BOT_TOKEN")
++        # Initialize client if token is available
++        self.client = WebClient(token=self.token) if self.token else None
++
++    def send_assignment_message(self, decision: RoutingDecision, error: JobError, slack_user_id: str):
++        """
++        Assigns the task via a direct, interactive message in Slack.
++        """
++        if not self.client:
++            print(f"Mock Slack Message to {slack_user_id}: You've been assigned job {decision.job_id} due to your skills in {decision.required_skills}.")
++            return
++            
++        try:
++            # TODO: Construct rich interactive blocks
++            blocks = [
++                {
++                    "type": "section",
++                    "text": {
++                        "type": "mrkdwn",
++                        "text": f"🚨 *New Support Task Assigned*\n*Job ID:* {error.job_id}\n*System:* {error.system}\n*Reason:* {decision.reasoning}"
++                    }
++                },
++                {
++                    "type": "actions",
++                    "elements": [
++                        {
++                            "type": "button",
++                            "text": {"type": "plain_text", "text": "Acknowledge"},
++                            "style": "primary",
++                            "value": f"ack_{error.job_id}"
++                        }
++                    ]
++                }
++            ]
++            
++            response = self.client.chat_postMessage(
++                channel=slack_user_id,
++                text=f"New task assigned: {error.job_id}",
++                blocks=blocks
++            )
++            return response
++        except SlackApiError as e:
++            print(f"Error sending Slack message: {e.response['error']}")
+\ No newline at end of file
+diff --git a/src/rye_router/triage.py b/src/rye_router/triage.py
+new file mode 100644
+index 0000000..c32582f
+--- /dev/null
++++ b/src/rye_router/triage.py
+@@ -0,0 +1,31 @@
++from typing import List
++from .models import JobError
++
++class AITriage:
++    def __init__(self, api_key: str = None):
++        self.api_key = api_key
++        # In the future, initialize OpenAI or local LLM client here
++        
++    def analyze_error(self, error: JobError) -> List[str]:
++        """
++        Parses the error to understand context and extract required skills.
++        Returns a list of required skills (e.g., ['Python', 'CUDA']).
++        """
++        # TODO: Implement actual LLM parsing logic
++        skills = []
++        error_text = (error.error_message + " " + (error.stack_trace or "")).lower()
++        
++        # Mock logic based on keywords
++        if "python" in error_text or "traceback" in error_text:
++            skills.append("python")
++        if "cuda" in error_text or "gpu" in error_text:
++            skills.append("cuda")
++        if "cesium" in error_text:
++            skills.append("cesiumjs")
++        if "sql" in error_text or "database" in error_text:
++            skills.append("database-admin")
++            
++        if not skills:
++            skills.append("general-debugging")
++            
++        return list(set(skills))
+\ No newline at end of file
+-- 
+2.47.3
+

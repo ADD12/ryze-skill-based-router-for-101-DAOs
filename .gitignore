@@ -1,4 +1,12 @@
 # gemini-cli settings
 .gemini/
+
 # GitHub App credentials
 gha-creds-*.json
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
