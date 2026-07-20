@@ -30,8 +30,11 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 ```env
 SLACK_BOT_TOKEN=xoxb-your-slack-token
+SLACK_SIGNING_SECRET=your-slack-signing-secret
 OPENAI_API_KEY=sk-your-openai-key
 DATABASE_URL=sqlite:///./rye.db
+GITHUB_WEBHOOK_SECRET=supersecret
+API_ADMIN_TOKEN=admin_token_123
 ```
 
 3. **Seed Database:**
@@ -50,9 +53,36 @@ In a separate terminal, simulate a CI/CD failure:
 python event_bus_example.py
 ```
 
+## Slack App Installation Guide
+
+To enable Rye to route errors and send interactive messages, you must configure a Slack App:
+
+1. **Create the App:**
+   - Go to [Slack API: Applications](https://api.slack.com/apps) and click **Create New App**.
+   - Choose **From scratch**, name it `Rye Router`, and select your workspace.
+
+2. **Configure Permissions (OAuth & Permissions):**
+   - Scroll to **Scopes** -> **Bot Token Scopes** and add the following:
+     - `chat:write` (to send assignment messages)
+     - `users:read` (to check roster presence/availability)
+   - Click **Install to Workspace** at the top.
+   - Copy the **Bot User OAuth Token** (`xoxb-...`) and set it as `SLACK_BOT_TOKEN` in your `.env`.
+
+3. **Enable Interactivity (for the "Acknowledge" button):**
+   - Go to **Interactivity & Shortcuts** in the sidebar.
+   - Toggle **Interactivity** to **On**.
+   - Set the **Request URL** to your public API domain: `https://<your-domain>/slack/interactivity`
+   - *(Note: For local testing, you can use [ngrok](https://ngrok.com/) to expose port 8000).*
+
+4. **Configure Security:**
+   - Go to **Basic Information** in the sidebar.
+   - Scroll down to **App Credentials** and copy the **Signing Secret**.
+   - Set this as `SLACK_SIGNING_SECRET` in your `.env` so Rye can verify payloads securely.
+
 ## API Endpoints
 - `POST /webhook/error`: Ingests an error from a system, routes it to the best available member via AI triage.
 - `POST /slack/interactivity`: Handles Slack block actions (e.g., clicking "Acknowledge" on a task).
 - `GET /health`: Basic health check.
+- `GET /admin/roster`: Requires `X-API-Key`. Returns the current team roster.
 
 You can view the full Swagger/OpenAPI docs by visiting `http://localhost:8000/docs` while the server is running.

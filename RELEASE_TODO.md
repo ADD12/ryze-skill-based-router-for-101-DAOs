@@ -26,5 +26,5 @@
 - [ ] Rename the GitHub Repository from `ADD12/ryze-skill-based-router-for-101-DAOs` to `ADD12/rye-skill-based-router-for-101-DAOs`. *(Requires Admin Permissions)*
 - [ ] Update GitHub Repository Description to: `"Rye is a skill-based routing AI agent for your next company or DAO"`. *(Requires Admin Permissions)*
 - [x] Add API documentation (available at `/docs` via FastAPI) to the README.
-- [ ] Add Slack App installation instructions to the README.
+- [x] Add Slack App installation instructions to the README.
 - [x] Write a "Getting Started" guide to show how to add team member skills and simulate a job error.
